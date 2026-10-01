@@ -1,20 +1,30 @@
 <?php
+
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Customer extends Model
 {
-    protected $fillable = ['name', 'owner_id', 'business_group_id', 'status', 'value', 'description'];
+    use HasFactory;
 
-    public function owner(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'owner_id');
-    }
+    protected $fillable = [
+        'user_id',
+        'name',
+        'email',
+        'phone',
+        'company',
+        'address',
+        'status',
+    ];
 
-    public function businessGroup(): BelongsTo
+    /**
+     * Get the user that owns the customer record.
+     */
+    public function user(): BelongsTo
     {
-        return $this->belongsTo(BusinessGroup::class);
+        return $this->belongsTo(User::class);
     }
 }

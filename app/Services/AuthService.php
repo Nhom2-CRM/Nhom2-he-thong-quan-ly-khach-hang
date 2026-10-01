@@ -52,9 +52,15 @@ class AuthService
      */
     public function sendResetLink(array $credentials): string
     {
-        Password::sendResetLink($credentials);
+        $status = Password::sendResetLink($credentials);
 
-        return 'Nếu email tồn tại trong hệ thống, chúng tôi đã gửi liên kết đặt lại mật khẩu.';
+        if ($status !== Password::RESET_LINK_SENT) {
+            throw ValidationException::withMessages([
+                'email' => [__($status)],
+            ]);
+        }
+
+        return __($status);
     }
 
     /**
@@ -80,4 +86,21 @@ class AuthService
 
         return __($status);
     }
+    public function createApiToken(User $user): string
+    {
+        $plainToken = bin2hex(random_bytes(32));
+        $user->apiTokens()->create([
+            'token_hash' => hash('sha256', $plainToken),
+            'expires_at' => now()->addHours(8),
+        ]);
+        return $plainToken;
+    }
+
+    public function revokeApiToken(?string $plainToken): void
+    {
+        if ($plainToken) {
+            \App\Models\ApiToken::where('token_hash', hash('sha256', $plainToken))->delete();
+        }
+    }
+
 }

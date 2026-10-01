@@ -18,9 +18,7 @@ class ForgotPasswordController extends Controller
     }
 
     /**
-     * Send a reset link if the email exists.
-     * Always return the same message so the system does not reveal
-     * whether an email is registered.
+     * Send a reset link to the given user.
      */
     public function sendResetLinkEmail(Request $request)
     {
@@ -31,11 +29,15 @@ class ForgotPasswordController extends Controller
             'email.email' => 'Địa chỉ email không đúng định dạng.',
         ]);
 
-        Password::sendResetLink($request->only('email'));
-
-        return back()->with(
-            'status',
-            'Nếu email tồn tại trong hệ thống, chúng tôi đã gửi liên kết đặt lại mật khẩu.'
+        // We will send the password reset link to this user. Once we have attempted
+        // to send the link, we will examine the response then see the message we
+        // need to show to the user.
+        $status = Password::sendResetLink(
+            $request->only('email')
         );
+
+        return $status === Password::RESET_LINK_SENT
+                    ? back()->with('status', 'Chúng tôi đã gửi liên kết đặt lại mật khẩu đến email của bạn!')
+                    : back()->withErrors(['email' => __($status)]);
     }
 }
