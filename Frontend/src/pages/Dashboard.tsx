@@ -1,11 +1,24 @@
+import { logout } from "../services/api";
+import { useSessionKeepAlive } from "../hooks/useSessionKeepAlive";
 import "./Dashboard.css";
 
 function Dashboard() {
+  useSessionKeepAlive();
+
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  function handleLogout() {
-    localStorage.removeItem("user");
-    window.location.href = "/login";
+  async function handleLogout() {
+    try {
+      // Gọi backend để vô hiệu phiên ngay phía server
+      await logout();
+    } catch {
+      // Nếu API lỗi vẫn tiếp tục xóa dữ liệu phía client
+    } finally {
+      localStorage.removeItem("user");
+      localStorage.removeItem("session_token");
+
+      window.location.href = "/login";
+    }
   }
 
   return (
@@ -34,6 +47,7 @@ function Dashboard() {
         <header className="topbar">
           <div>
             <h1>Trang chủ CRM</h1>
+
             <p>Chào mừng trở lại, {user.name}</p>
           </div>
 
@@ -77,6 +91,7 @@ function Dashboard() {
           <div className="content-header">
             <div>
               <h2>Danh mục khách hàng của tôi</h2>
+
               <p>Quản lý các khách hàng được phân công</p>
             </div>
 
@@ -94,27 +109,33 @@ function Dashboard() {
             <div className="table-row">
               <span>Nguyễn Văn An</span>
               <span>an@example.com</span>
+
               <span>
                 <b className="status active-status">Đang hoạt động</b>
               </span>
+
               <span>{user.name}</span>
             </div>
 
             <div className="table-row">
               <span>Trần Minh Anh</span>
               <span>minhanh@example.com</span>
+
               <span>
                 <b className="status lead-status">Tiềm năng</b>
               </span>
+
               <span>{user.name}</span>
             </div>
 
             <div className="table-row">
               <span>Lê Thu Hà</span>
               <span>thuha@example.com</span>
+
               <span>
                 <b className="status active-status">Đang hoạt động</b>
               </span>
+
               <span>{user.name}</span>
             </div>
           </div>

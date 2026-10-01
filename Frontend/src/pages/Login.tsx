@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { login } from "../services/api";
 import "./Login.css";
@@ -10,6 +10,16 @@ function Login() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Hiển thị thông báo nếu phiên đăng nhập đã hết hạn
+  useEffect(() => {
+    const loginMessage = sessionStorage.getItem("login_message");
+
+    if (loginMessage) {
+      setMessage(loginMessage);
+      sessionStorage.removeItem("login_message");
+    }
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -23,8 +33,13 @@ function Login() {
         password,
       });
 
+      // Lưu thông tin người dùng
       localStorage.setItem("user", JSON.stringify(result.user));
 
+      // Lưu token phiên đăng nhập
+      localStorage.setItem("session_token", result.session_token);
+
+      // Chuyển trang theo vai trò
       navigate(result.redirect);
     } catch (error: any) {
       setMessage(error.message || "Đăng nhập thất bại.");
