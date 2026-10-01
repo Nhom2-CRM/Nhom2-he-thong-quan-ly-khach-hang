@@ -2,88 +2,67 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ForgotPasswordRequest;
-use App\Http\Requests\LoginRequest;
-use App\Http\Requests\ResetPasswordRequest;
-use App\Services\AuthService;
-use Illuminate\Http\JsonResponse;
+use App\Models\User;
+use App\Models\UserSession;
+use App\Services\SessionService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    protected AuthService $authService;
-
-    public function __construct(AuthService $authService)
+    public function __construct(private SessionService $sessionService)
     {
-        $this->authService = $authService;
     }
 
-    /**
-     * Handle API login.
-     */
-    public function login(LoginRequest $request): JsonResponse
+    public function changePassword(Request $request)
     {
-        $result = $this->authService->login($request->only('email', 'password'));
-
-        return response()->json([
-            'status' => 'success',
-            'message' => $result['message'],
-            'data' => [
-                'user' => $result['user'],
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'new_password' => [
+                'required',
+                'string',
+                'min:8',
+                'regex:/^(?=.*[A-Za-z])(?=.*\d).+$/',
+                'confirmed',
             ],
+        ], [
+            'current_password.required' => 'Vui lòng nhập mật khẩu hiện tại.',
+            'new_password.required' => 'Vui lòng nhập mật khẩu mới.',
+            'new_password.min' => 'Mật khẩu mới phải có tối thiểu 8 ký tự.',
+            'new_password.regex' => 'Mật khẩu mới phải chứa cả chữ và số.',
+            'new_password.confirmed' => 'Xác nhận mật khẩu mới không khớp.',
         ]);
-    }
 
-    /**
-     * Handle API logout.
-     */
-    public function logout(): JsonResponse
-    {
-        $this->authService->logout();
+        /** @var User|null $user */
+        $user = $request->attributes->get('current_user');
+
+        /** @var UserSession|null $currentSession */
+        $currentSession = $request->attributes->get('current_session');
+
+        if (!$user || !$currentSession) {
+            return response()->json([
+                'success' => false,
+                'code' => 'SESSION_EXPIRED',
+                'message' => 'Phiên đăng nhập không hợp lệ.',
+            ], 401);
+        }
+
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Mật khẩu hiện tại không chính xác.',
+            ], 422);
+        }
+
+        $user->password = $validated['new_password'];
+        $user->save();
+
+        $revokedSessions = $this->sessionService->revokeOtherSessions($user, $currentSession);
 
         return response()->json([
-            'status' => 'success',
-            'message' => 'Đã đăng xuất thành công.',
-        ]);
-    }
-
-    /**
-     * Send password reset link email via API.
-     */
-    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
-    {
-        $status = $this->authService->sendResetLink($request->only('email'));
-
-        return response()->json([
-            'status' => 'success',
-            'message' => $status,
-        ]);
-    }
-
-    /**
-     * Reset user password via API.
-     */
-    public function resetPassword(ResetPasswordRequest $request): JsonResponse
-    {
-        $status = $this->authService->resetPassword($request->only('email', 'password', 'password_confirmation', 'token'));
-
-        return response()->json([
-            'status' => 'success',
-            'message' => $status,
-        ]);
-    }
-
-    /**
-     * Get authenticated user profile.
-     */
-    public function me(Request $request): JsonResponse
-    {
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'user' => $request->user(),
-            ],
+            'success' => true,
+            'message' => 'Đổi mật khẩu thành công. Các phiên đăng nhập khác đã được thu hồi.',
+            'revoked_sessions' => $revokedSessions,
         ]);
     }
 }
