@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Customer;
+use App\Models\Opportunity;
 use Illuminate\Http\JsonResponse;
 
-class CustomerController extends Controller
+class OpportunityController extends Controller
 {
     public function index(): JsonResponse
     {
         return response()->json([
-            'data' => Customer::with('owner:id,name,email')->latest()->get(),
+            'data' => Opportunity::with('owner:id,name,email')->latest()->get(),
         ]);
     }
 }

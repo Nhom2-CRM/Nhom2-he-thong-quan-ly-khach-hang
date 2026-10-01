@@ -2,41 +2,49 @@
 
 namespace App\Models;
 
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use Notifiable;
+
+    protected $fillable = ['name', 'email', 'password', 'role', 'locked_at'];
+
+    protected $hidden = ['password', 'remember_token'];
 
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
+            'locked_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
 
-    public function roles(): BelongsToMany
+    public function customers(): HasMany
     {
-        return $this->belongsToMany(Role::class, 'role_user');
+        return $this->hasMany(Customer::class, 'owner_id');
     }
 
-    public function businessGroups(): BelongsToMany
+    public function opportunities(): HasMany
     {
-        return $this->belongsToMany(BusinessGroup::class, 'business_group_user');
+        return $this->hasMany(Opportunity::class, 'owner_id');
     }
 
-    public function hasRole(string $roleName): bool
+    public function sessions(): HasMany
     {
-        return $this->roles()->where('name', $roleName)->exists();
+        return $this->hasMany(UserSession::class);
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->locked_at !== null;
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
     }
 }

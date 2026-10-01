@@ -9,20 +9,18 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckSession
 {
-    public function __construct(private SessionService $sessionService)
-    {
-    }
+    public function __construct(private SessionService $sessionService) {}
 
     public function handle(Request $request, Closure $next): Response
     {
         $token = $request->bearerToken();
         $session = $token ? $this->sessionService->validate($token) : null;
 
-        if (!$session || !$session->user) {
+        if (!$session) {
             return response()->json([
                 'success' => false,
                 'code' => 'SESSION_EXPIRED',
-                'message' => 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+                'message' => 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.',
             ], 401);
         }
 

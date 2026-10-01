@@ -12,10 +12,10 @@ class RequireAdminRole
     {
         $user = $request->attributes->get('current_user');
 
-        if (!$user || !$user->hasRole('admin')) {
+        if (!$user || !$user->isAdmin()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Bạn không có quyền quản trị hệ thống.',
+                'message' => 'Bạn không có quyền khóa tài khoản người dùng.',
             ], 403);
         }
 

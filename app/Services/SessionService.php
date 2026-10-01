@@ -30,6 +30,10 @@ class SessionService
             return null;
         }
 
+        if (!$session->user || $session->user->isLocked()) {
+            return null;
+        }
+
         return $session;
     }
 
@@ -44,5 +48,12 @@ class SessionService
     public function revoke(UserSession $session): void
     {
         $session->update(['revoked' => true]);
+    }
+
+    public function revokeAllForUser(User $user): int
+    {
+        return UserSession::where('user_id', $user->id)
+            ->where('revoked', false)
+            ->update(['revoked' => true]);
     }
 }
