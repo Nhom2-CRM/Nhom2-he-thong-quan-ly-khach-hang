@@ -1,22 +1,175 @@
-import { useEffect, useState } from 'react';
-import './index.css';
-import { activate, createUser, getUsers, login, logout, messageOf, updateUser } from './services/api';
-import type { PageMeta, Role, Status, User } from './types';
+import { useEffect, useMemo, useState } from 'react';
+import './App.css';
+import { UserAssignmentComponent } from './components/UserAssignmentComponent';
+import {
+  apiMessage,
+  getAssignmentOptions,
+  getCurrentUser,
+  getUsers,
+  login,
+  logout,
+  updateAssignments,
+} from './services/api';
+import type { AssignmentOptions, UserSummary } from './types';
 
-const emptyMeta:PageMeta={current_page:1,last_page:1,per_page:20,total:0};
-function App(){
- const [users,setUsers]=useState<User[]>([]); const [meta,setMeta]=useState<PageMeta>(emptyMeta); const [search,setSearch]=useState(''); const [role,setRole]=useState<Role|''>(''); const [status,setStatus]=useState<Status|''>('');
- const [logged,setLogged]=useState(!!localStorage.getItem('session_token')); const [email,setEmail]=useState('admin@company.com'); const [password,setPassword]=useState('Admin1234'); const [error,setError]=useState(''); const [notice,setNotice]=useState('');
- const [form,setForm]=useState({name:'',email:'',business_group:'',role:'sales' as Role}); const [edit,setEdit]=useState<User|null>(null);
- const token=new URLSearchParams(location.search).get('token');
- const load=(page=1)=>getUsers({search,role,status,page}).then(r=>{setUsers(r.users);setMeta(r.meta)}).catch(e=>setError(messageOf(e)));
- useEffect(()=>{if(token){activate(token).then(r=>setNotice(r.message)).catch(e=>setError(messageOf(e)));} if(logged) load();},[]);
- if(!logged)return <main className="center"><form className="card login" onSubmit={async e=>{e.preventDefault();setError('');try{await login(email,password);setLogged(true);await load();}catch(x){setError(messageOf(x))}}}><h1>Quản trị người dùng</h1>{error&&<div className="msg err">{error}</div>}{notice&&<div className="msg ok">{notice}</div>}<label>Email<input value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Mật khẩu<input type="password" value={password} onChange={e=>setPassword(e.target.value)}/></label><button>Đăng nhập</button><small>admin@company.com / Admin1234</small></form></main>;
- return <main className="shell"><header><div><h1>Quản lý tài khoản người dùng</h1><p>Tạo, sửa, tìm kiếm, lọc và phân trang 20 dòng.</p></div><button className="ghost" onClick={async()=>{await logout();setLogged(false)}}>Đăng xuất</button></header>{error&&<div className="msg err">{error}</div>}{notice&&<div className="msg ok">{notice}</div>}
- <section className="toolbar"><input placeholder="Tìm theo tên, email, nhóm..." value={search} onChange={e=>setSearch(e.target.value)}/><select value={role} onChange={e=>setRole(e.target.value as Role|'')}><option value="">Tất cả vai trò</option><option value="admin">Admin</option><option value="manager">Trưởng nhóm</option><option value="sales">Nhân viên kinh doanh</option></select><select value={status} onChange={e=>setStatus(e.target.value as Status|'')}><option value="">Tất cả trạng thái</option><option value="pending">Chờ kích hoạt</option><option value="active">Hoạt động</option><option value="inactive">Ngưng hoạt động</option></select><button onClick={()=>load(1)}>Tìm / Lọc</button></section>
- <section className="grid"><div className="card"><h2>Tạo tài khoản</h2><form onSubmit={async e=>{e.preventDefault();setError('');try{const r=await createUser(form);setNotice(r.message);setForm({name:'',email:'',business_group:'',role:'sales'});await load(1)}catch(x){setError(messageOf(x))}}}><label>Họ tên<input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} required/></label><label>Email<input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} required/></label><label>Nhóm kinh doanh<input value={form.business_group} onChange={e=>setForm({...form,business_group:e.target.value})}/></label><label>Vai trò<select value={form.role} onChange={e=>setForm({...form,role:e.target.value as Role})}><option value="sales">Nhân viên kinh doanh</option><option value="manager">Trưởng nhóm</option><option value="admin">Admin</option></select></label><button>Tạo và gửi email kích hoạt</button></form></div>
- <div className="card wide"><h2>Danh sách người dùng</h2><div className="tablewrap"><table><thead><tr><th>Tên</th><th>Email</th><th>Nhóm</th><th>Vai trò</th><th>Trạng thái</th><th></th></tr></thead><tbody>{users.map(u=><tr key={u.id}><td>{u.name}</td><td>{u.email}</td><td>{u.business_group||'-'}</td><td>{u.role}</td><td>{u.status}</td><td><button className="small" onClick={()=>setEdit(u)}>Sửa</button></td></tr>)}</tbody></table></div><div className="pager"><button disabled={meta.current_page<=1} onClick={()=>load(meta.current_page-1)}>←</button><span>Trang {meta.current_page}/{meta.last_page} · {meta.total} tài khoản</span><button disabled={meta.current_page>=meta.last_page} onClick={()=>load(meta.current_page+1)}>→</button></div></div></section>
- {edit&&<div className="modal"><form className="card edit" onSubmit={async e=>{e.preventDefault();try{const r=await updateUser(edit.id,edit);setNotice(r.message);setEdit(null);await load(meta.current_page)}catch(x){setError(messageOf(x))}}}><h2>Sửa người dùng</h2><label>Tên<input value={edit.name} onChange={e=>setEdit({...edit,name:e.target.value})}/></label><label>Email<input value={edit.email} onChange={e=>setEdit({...edit,email:e.target.value})}/></label><label>Nhóm<input value={edit.business_group||''} onChange={e=>setEdit({...edit,business_group:e.target.value})}/></label><label>Vai trò<select value={edit.role} onChange={e=>setEdit({...edit,role:e.target.value as Role})}><option value="sales">Nhân viên</option><option value="manager">Trưởng nhóm</option><option value="admin">Admin</option></select></label><label>Trạng thái<select value={edit.status} onChange={e=>setEdit({...edit,status:e.target.value as Status})}><option value="pending">Chờ kích hoạt</option><option value="active">Hoạt động</option><option value="inactive">Ngưng hoạt động</option></select></label><div className="actions"><button type="button" className="ghost" onClick={()=>setEdit(null)}>Hủy</button><button>Lưu</button></div></form></div>}
- </main>
+function App() {
+  const [currentUser, setCurrentUser] = useState<UserSummary | null>(null);
+  const [users, setUsers] = useState<UserSummary[]>([]);
+  const [options, setOptions] = useState<AssignmentOptions>({ roles: [], business_groups: [] });
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [email, setEmail] = useState('admin@company.com');
+  const [password, setPassword] = useState('Admin1234');
+
+  const selectedUser = useMemo(
+    () => users.find((user) => user.id === selectedUserId) ?? null,
+    [users, selectedUserId],
+  );
+
+  const loadAdminData = async () => {
+    const [me, userList, assignmentOptions] = await Promise.all([
+      getCurrentUser(),
+      getUsers(),
+      getAssignmentOptions(),
+    ]);
+    setCurrentUser(me);
+    setUsers(userList);
+    setOptions(assignmentOptions);
+    if (userList.length > 0) setSelectedUserId((value) => value ?? userList[0].id);
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem('session_token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    loadAdminData()
+      .catch((err) => {
+        setError(apiMessage(err));
+        setCurrentUser(null);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError('');
+    setMessage('');
+    setLoading(true);
+
+    try {
+      await login(email, password);
+      await loadAdminData();
+    } catch (err) {
+      setError(apiMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async (roleIds: number[], groupIds: number[]) => {
+    if (!selectedUser) return;
+    setSaving(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const updated = await updateAssignments(selectedUser.id, roleIds, groupIds);
+      setUsers((current) => current.map((user) => (user.id === updated.id ? updated : user)));
+      if (currentUser?.id === updated.id) setCurrentUser(updated);
+      setMessage('Cập nhật vai trò và nhóm kinh doanh thành công.');
+    } catch (err) {
+      setError(apiMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    setCurrentUser(null);
+    setUsers([]);
+    setSelectedUserId(null);
+    setMessage('');
+    setError('');
+  };
+
+  if (loading) return <div className="center-box">Đang tải dữ liệu...</div>;
+
+  if (!currentUser) {
+    return (
+      <main className="login-page">
+        <form className="login-card" onSubmit={handleLogin}>
+          <h1>Quản trị vai trò</h1>
+          <p>Đăng nhập bằng tài khoản quản trị hệ thống.</p>
+          {error && <div className="message error">{error}</div>}
+          <label>Email<input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required /></label>
+          <label>Mật khẩu<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required /></label>
+          <button className="primary" type="submit">Đăng nhập</button>
+          <small>Tài khoản demo: admin@company.com / Admin1234</small>
+        </form>
+      </main>
+    );
+  }
+
+  return (
+    <main className="page-shell">
+      <header className="topbar">
+        <div>
+          <h1>Phân quyền & Nhóm kinh doanh</h1>
+          <p>Quản trị vai trò và cây tổ chức quyết định phạm vi dữ liệu người dùng nhìn thấy.</p>
+        </div>
+        <div className="current-user">
+          <strong>{currentUser.name}</strong>
+          <span>{currentUser.roles.map((role) => role.display_name).join(', ')}</span>
+          <button className="ghost" onClick={handleLogout}>Đăng xuất</button>
+        </div>
+      </header>
+
+      {error && <div className="message error">{error}</div>}
+      {message && <div className="message success">{message}</div>}
+
+      <div className="workspace">
+        <aside className="user-list">
+          <h2>Người dùng</h2>
+          {users.map((user) => (
+            <button
+              key={user.id}
+              className={selectedUserId === user.id ? 'user-row active' : 'user-row'}
+              onClick={() => {
+                setSelectedUserId(user.id);
+                setError('');
+                setMessage('');
+              }}
+            >
+              <strong>{user.name}</strong>
+              <span>{user.roles.map((role) => role.display_name).join(', ') || 'Chưa có vai trò'}</span>
+            </button>
+          ))}
+        </aside>
+
+        <section className="content-panel">
+          {selectedUser ? (
+            <UserAssignmentComponent
+              user={selectedUser}
+              currentUserId={currentUser.id}
+              roles={options.roles}
+              groups={options.business_groups}
+              saving={saving}
+              onSave={handleSave}
+            />
+          ) : (
+            <div className="empty-state">Chọn một người dùng để phân quyền.</div>
+          )}
+        </section>
+      </div>
+    </main>
+  );
 }
+
 export default App;

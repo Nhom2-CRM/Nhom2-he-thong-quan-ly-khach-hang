@@ -1,12 +1,80 @@
 import axios from 'axios';
-import type { PageMeta, Role, Status, User } from '../types';
-const api=axios.create({baseURL:import.meta.env.VITE_API_URL||'http://127.0.0.1:8000/api',headers:{Accept:'application/json'}});
-api.interceptors.request.use(c=>{const t=localStorage.getItem('session_token');if(t)c.headers.Authorization=`Bearer ${t}`;return c;});
-api.interceptors.response.use(r=>r,e=>{if(e.response?.status===401)localStorage.removeItem('session_token');return Promise.reject(e);});
-export async function login(email:string,password:string){const {data}=await api.post('/login',{email,password});localStorage.setItem('session_token',data.session_token);return data.user as User;}
-export async function logout(){try{await api.post('/logout')}finally{localStorage.removeItem('session_token')}}
-export async function getUsers(params:{search?:string;role?:Role|'';status?:Status|'';page?:number}){const {data}=await api.get('/admin/users',{params});return {users:data.data as User[],meta:data.meta as PageMeta};}
-export async function createUser(payload:{name:string;email:string;business_group?:string;role:Role}){const {data}=await api.post('/admin/users',payload);return data;}
-export async function updateUser(id:number,payload:Partial<Pick<User,'name'|'email'|'business_group'|'role'|'status'>>){const {data}=await api.put(`/admin/users/${id}`,payload);return data;}
-export async function activate(token:string){const {data}=await api.post('/activate',{token});return data;}
-export function messageOf(error:unknown){if(axios.isAxiosError(error)){const errors=error.response?.data?.errors;if(errors){const first=Object.values(errors)[0] as string[]|undefined;if(first?.[0])return first[0];}return error.response?.data?.message||'Không thể kết nối máy chủ.';}return 'Có lỗi xảy ra.';}
+import type { AssignmentOptions, UserSummary } from '../types';
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api',
+  headers: { Accept: 'application/json' },
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('session_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('session_token');
+      localStorage.removeItem('current_user');
+    }
+    return Promise.reject(error);
+  },
+);
+
+export async function login(email: string, password: string) {
+  const { data } = await api.post('/login', { email, password });
+  localStorage.setItem('session_token', data.session_token);
+  localStorage.setItem('current_user', JSON.stringify(data.user));
+  return data.user as UserSummary;
+}
+
+export async function logout() {
+  try {
+    await api.post('/logout');
+  } finally {
+    localStorage.removeItem('session_token');
+    localStorage.removeItem('current_user');
+  }
+}
+
+export async function getCurrentUser(): Promise<UserSummary> {
+  const { data } = await api.get('/me');
+  localStorage.setItem('current_user', JSON.stringify(data.user));
+  return data.user;
+}
+
+export async function getUsers(): Promise<UserSummary[]> {
+  const { data } = await api.get('/admin/users');
+  return data.users;
+}
+
+export async function getAssignmentOptions(): Promise<AssignmentOptions> {
+  const { data } = await api.get('/admin/assignment-options');
+  return {
+    roles: data.roles,
+    business_groups: data.business_groups,
+  };
+}
+
+export async function updateAssignments(
+  userId: number,
+  roleIds: number[],
+  groupIds: number[],
+): Promise<UserSummary> {
+  const { data } = await api.put(`/admin/users/${userId}/assignments`, {
+    role_ids: roleIds,
+    business_group_ids: groupIds,
+  });
+  return data.user;
+}
+
+export function apiMessage(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    return error.response?.data?.message || 'Không thể kết nối đến máy chủ.';
+  }
+  return 'Có lỗi xảy ra. Vui lòng thử lại.';
+}
