@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Services;
 
 use App\Models\User;
@@ -16,36 +15,26 @@ class SessionService
         return UserSession::create([
             'user_id' => $user->id,
             'token' => hash('sha256', Str::random(80)),
-            'last_activity' => Carbon::now(),
-            'expires_at' => Carbon::now()->addMinutes($this->sessionMinutes),
+            'last_activity' => now(),
+            'expires_at' => now()->addMinutes($this->sessionMinutes),
             'revoked' => false,
         ]);
     }
 
     public function validate(string $token): ?UserSession
     {
-        $session = UserSession::where('token', $token)->first();
-
+        $session = UserSession::with('user')->where('token', $token)->first();
         if (!$session || $session->revoked || Carbon::now()->greaterThan($session->expires_at)) {
             return null;
         }
-
         return $session;
     }
 
     public function refresh(UserSession $session): void
     {
         $session->update([
-            'last_activity' => Carbon::now(),
-            'expires_at' => Carbon::now()->addMinutes($this->sessionMinutes),
+            'last_activity' => now(),
+            'expires_at' => now()->addMinutes($this->sessionMinutes),
         ]);
-    }
-
-    public function revokeOtherSessions(User $user, UserSession $currentSession): int
-    {
-        return UserSession::where('user_id', $user->id)
-            ->where('id', '!=', $currentSession->id)
-            ->where('revoked', false)
-            ->update(['revoked' => true]);
     }
 }

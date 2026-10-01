@@ -4,7 +4,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class Customer extends Model
+class Opportunity extends Model
 {
     protected $fillable = ['name', 'owner_id', 'business_group_id', 'status', 'value', 'description'];
 
