@@ -1,37 +1,56 @@
-import { useQuery } from '@tanstack/react-query';
-import { api } from '../services/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { customersApi } from '../services/api';
+import type { CustomerFilters, CustomerPayload } from '../types';
+import toast from 'react-hot-toast';
 
-interface FetchParams {
-  search?: string;
-  page?: number;
+export function useCustomers(filters: CustomerFilters = {}) {
+  return useQuery({
+    queryKey: ['customers', filters],
+    queryFn: () => customersApi.list(filters),
+  });
 }
 
-// Fetch danh sách khách hàng (backend sẽ dựa vào token để tự lọc theo MINE / TEAM / ALL)
-export const useCustomers = (params: FetchParams) => {
+export function useCustomer(id: number) {
   return useQuery({
-    queryKey: ['customers', params],
-    queryFn: async () => {
-      const { data } = await api.get('/api/customers', { params });
-      return data;
-    },
+    queryKey: ['customer', id],
+    queryFn: () => customersApi.get(id),
+    enabled: !!id,
   });
-};
+}
 
-// Xuất danh sách ra file Excel
-export const exportCustomersToExcel = async (searchQuery: string) => {
-  try {
-    const response = await api.get('/api/customers/export', {
-      params: { search: searchQuery },
-      responseType: 'blob',
-    });
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'Danh_sach_khach_hang.xlsx');
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  } catch (error) {
-    console.error('Lỗi khi xuất file Excel', error);
-  }
-};
+export function useCreateCustomer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CustomerPayload) => customersApi.create(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['customers'] });
+      toast.success('Tạo khách hàng thành công!');
+    },
+    onError: () => toast.error('Tạo khách hàng thất bại.'),
+  });
+}
+
+export function useUpdateCustomer(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Partial<CustomerPayload>) => customersApi.update(id, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['customers'] });
+      qc.invalidateQueries({ queryKey: ['customer', id] });
+      toast.success('Cập nhật thành công!');
+    },
+    onError: () => toast.error('Cập nhật thất bại.'),
+  });
+}
+
+export function useDeleteCustomer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => customersApi.remove(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['customers'] });
+      toast.success('Đã xóa khách hàng.');
+    },
+    onError: () => toast.error('Xóa thất bại.'),
+  });
+}
