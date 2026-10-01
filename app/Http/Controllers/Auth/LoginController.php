@@ -3,55 +3,47 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\LoginRequest;
+use App\Services\AuthService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class LoginController extends Controller
 {
-    /**
-     * Show the application's login form.
-     */
-    public function showLoginForm(): View
-    {
-        return view('auth.login');
-    }
+    public function __construct(private readonly AuthService $authService) {}
 
     /**
-     * Handle an authentication attempt.
+     * Hiển thị form đăng nhập.
      */
-    public function login(Request $request)
+    public function showLoginForm(Request $request): View
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
-        ], [
-            'email.required' => 'Vui lòng nhập địa chỉ email.',
-            'email.email' => 'Địa chỉ email không hợp lệ.',
-            'password.required' => 'Vui lòng nhập mật khẩu.',
+        return view('auth.login', [
+            'redirect' => $request->query('redirect', route('dashboard')),
         ]);
-
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
-            $request->session()->regenerate();
-
-            return redirect()->intended('/dashboard');
-        }
-
-        return back()->withErrors([
-            'email' => 'Thông tin đăng nhập không chính xác.',
-        ])->onlyInput('email');
     }
 
     /**
-     * Log the user out of the application.
+     * Xử lý đăng nhập.
+     * Nếu sai thông tin -> AuthenticationException -> Handler -> 401.
      */
-    public function logout(Request $request)
+    public function login(LoginRequest $request): RedirectResponse
     {
-        Auth::logout();
+        $user = $this->authService->login($request->validated());
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $redirect = $request->input('redirect', route('dashboard'));
 
-        return redirect('/login')->with('status', 'Đã đăng xuất thành công.');
+        return redirect()->intended($redirect)
+                         ->with('success', "Chào mừng, {$user->name}!");
+    }
+
+    /**
+     * Đăng xuất.
+     */
+    public function logout(Request $request): RedirectResponse
+    {
+        $this->authService->logout();
+
+        return redirect()->route('login')->with('info', 'Bạn đã đăng xuất.');
     }
 }

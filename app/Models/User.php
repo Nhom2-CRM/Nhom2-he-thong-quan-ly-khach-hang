@@ -2,121 +2,77 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Support\Collection;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
+     * Các trường được phép mass-assign.
      */
     protected $fillable = [
         'name',
         'email',
         'password',
-        'role',
-        'business_group_id',
+        'role',       // 'admin' | 'manager' | 'staff'
+        'is_active',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password'          => 'hashed',
+        'is_active'         => 'boolean',
+    ];
+
+    // -------------------------------------------------------------------------
+    // Relations
+    // -------------------------------------------------------------------------
+
+    public function customers(): HasMany
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+        return $this->hasMany(Customer::class, 'assigned_to');
+    }
+
+    public function campaigns(): HasMany
+    {
+        return $this->hasMany(Campaign::class, 'created_by');
+    }
+
+    // -------------------------------------------------------------------------
+    // Permission helpers (dùng bởi CheckPermission middleware)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Kiểm tra user có quyền $permission không.
+     * Mapping đơn giản dựa trên cột `role`.
+     */
+    public function can(string $ability, mixed $arguments = []): bool
+    {
+        $rolePermissions = [
+            'admin'   => ['manage-users', 'manage-customers', 'manage-campaigns', 'view-reports'],
+            'manager' => ['manage-customers', 'manage-campaigns', 'view-reports'],
+            'staff'   => ['manage-customers'],
         ];
+
+        return in_array($ability, $rolePermissions[$this->role] ?? [], true);
     }
 
-    /**
-     * Send the password reset notification.
-     *
-     * @param  string  $token
-     * @return void
-     */
-    public function sendPasswordResetNotification($token): void
-    {
-        $this->notify(new \App\Notifications\ResetPasswordNotification($token));
-    }
+    // -------------------------------------------------------------------------
+    // Scopes
+    // -------------------------------------------------------------------------
 
-    public function businessGroup(): BelongsTo
+    public function scopeActive($query)
     {
-        return $this->belongsTo(BusinessGroup::class);
-    }
-
-    public function permissions(): BelongsToMany
-    {
-        return $this->belongsToMany(Permission::class);
-    }
-
-    public function apiTokens()
-    {
-        return $this->hasMany(ApiToken::class);
-    }
-
-    public function hasPermission(string $permission): bool
-    {
-        return $this->permissions->contains('code', $permission);
-    }
-
-    public function permissionCodes(): Collection
-    {
-        return $this->permissions->pluck('code');
-    }
-
-    public function menuProfile(): array
-    {
-        $this->loadMissing(['businessGroup', 'permissions']);
-        return [
-            'id' => $this->id,
-            'name' => $this->name,
-            'email' => $this->email,
-            'role' => $this->role,
-            'businessGroup' => [
-                'id' => $this->businessGroup?->id,
-                'name' => $this->businessGroup?->name,
-            ],
-            'permissions' => $this->permissionCodes()->values()->all(),
-        ];
-    }
-
-    /**
-     * Get the customers associated with the user.
-     */
-    public function customers()
-    {
-        return $this->hasMany(Customer::class);
-    }
-
-    /**
-     * Get the campaigns created by the user.
-     */
-    public function campaigns()
-    {
-        return $this->hasMany(Campaign::class);
+        return $query->where('is_active', true);
     }
 }

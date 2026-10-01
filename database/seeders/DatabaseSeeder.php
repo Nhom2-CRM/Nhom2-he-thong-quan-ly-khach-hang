@@ -1,7 +1,9 @@
 <?php
+
 namespace Database\Seeders;
-use App\Models\BusinessGroup;
-use App\Models\Permission;
+
+use App\Models\Campaign;
+use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -10,26 +12,70 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $groups = collect(['Kinh doanh toàn hệ thống','Kinh doanh miền Bắc','Kinh doanh miền Nam'])
-            ->mapWithKeys(fn($name) => [$name => BusinessGroup::firstOrCreate(['name'=>$name])]);
-        $permissionMap = [
-            'dashboard.view'=>'Xem tổng quan',
-            'customers.view'=>'Xem khách hàng', 'customers.create'=>'Tạo khách hàng', 'customers.update'=>'Sửa khách hàng', 'customers.delete'=>'Xóa khách hàng',
-            'campaigns.view'=>'Xem chiến dịch', 'campaigns.create'=>'Tạo chiến dịch', 'campaigns.update'=>'Sửa chiến dịch', 'campaigns.delete'=>'Xóa chiến dịch',
-            'reports.view'=>'Xem báo cáo', 'users.manage'=>'Quản lý người dùng',
+        // ── 1. Tạo users ──────────────────────────────────────────────────────
+        $admin = User::create([
+            'name'      => 'Admin',
+            'email'     => 'admin@example.com',
+            'password'  => Hash::make('password'),
+            'role'      => 'admin',
+            'is_active' => true,
+        ]);
+
+        $manager = User::create([
+            'name'      => 'Nguyễn Văn Manager',
+            'email'     => 'manager@example.com',
+            'password'  => Hash::make('password'),
+            'role'      => 'manager',
+            'is_active' => true,
+        ]);
+
+        $staff = User::create([
+            'name'      => 'Trần Thị Staff',
+            'email'     => 'staff@example.com',
+            'password'  => Hash::make('password'),
+            'role'      => 'staff',
+            'is_active' => true,
+        ]);
+
+        // Tài khoản bị vô hiệu hoá – dùng để test lỗi 401
+        User::create([
+            'name'      => 'Inactive User',
+            'email'     => 'inactive@example.com',
+            'password'  => Hash::make('password'),
+            'role'      => 'staff',
+            'is_active' => false,
+        ]);
+
+        // ── 2. Tạo customers ──────────────────────────────────────────────────
+        $customers = [
+            ['name' => 'Công ty ABC',      'email' => 'abc@company.vn',    'status' => 'active',   'assigned_to' => $staff->id],
+            ['name' => 'Công ty XYZ',      'email' => 'xyz@company.vn',    'status' => 'prospect', 'assigned_to' => $staff->id],
+            ['name' => 'Nguyễn Văn Khách', 'email' => 'khach1@gmail.com',  'status' => 'lead',     'assigned_to' => $manager->id],
+            ['name' => 'Trần Thị B',       'email' => 'tranb@gmail.com',   'status' => 'inactive', 'assigned_to' => $staff->id],
+            ['name' => 'CTCP Delta',       'email' => 'delta@corp.vn',     'status' => 'active',   'assigned_to' => $manager->id],
         ];
-        $permissions = collect($permissionMap)->mapWithKeys(fn($name,$code)=>[$code=>Permission::firstOrCreate(['code'=>$code],['name'=>$name])]);
-        $users = [
-            ['name'=>'Nguyễn Văn Admin','email'=>'admin@example.com','role'=>'Quản trị viên','group'=>'Kinh doanh toàn hệ thống','perms'=>$permissions->keys()->all()],
-            ['name'=>'Trần Minh Sales','email'=>'sales@example.com','role'=>'Nhân viên kinh doanh','group'=>'Kinh doanh miền Bắc','perms'=>['dashboard.view','customers.view','customers.create','campaigns.view']],
-            ['name'=>'Lê Thu Viewer','email'=>'viewer@example.com','role'=>'Nhân viên xem báo cáo','group'=>'Kinh doanh miền Nam','perms'=>['dashboard.view','customers.view','reports.view']],
-        ];
-        foreach ($users as $data) {
-            $user = User::updateOrCreate(['email'=>$data['email']], [
-                'name'=>$data['name'], 'password'=>Hash::make('password'), 'role'=>$data['role'], 'business_group_id'=>$groups[$data['group']]->id,
-            ]);
-            $user->permissions()->sync(collect($data['perms'])->map(fn($code)=>$permissions[$code]->id)->all());
+
+        foreach ($customers as $data) {
+            Customer::create(array_merge($data, [
+                'phone'   => '090' . rand(1000000, 9999999),
+                'company' => $data['name'],
+            ]));
         }
-        $this->call([CustomerSeeder::class, CampaignSeeder::class]);
+
+        // ── 3. Tạo campaigns ──────────────────────────────────────────────────
+        $campaigns = [
+            ['name' => 'Campaign Q1 2025', 'status' => 'completed', 'budget' => 50_000_000],
+            ['name' => 'Email Marketing',  'status' => 'active',    'budget' => 20_000_000],
+            ['name' => 'Zalo OA Outreach', 'status' => 'active',    'budget' => 15_000_000],
+            ['name' => 'Draft Campaign',   'status' => 'draft',     'budget' => null],
+        ];
+
+        foreach ($campaigns as $data) {
+            Campaign::create(array_merge($data, [
+                'created_by' => $admin->id,
+                'starts_at'  => now()->subDays(rand(10, 60)),
+                'ends_at'    => now()->addDays(rand(10, 90)),
+            ]));
+        }
     }
 }

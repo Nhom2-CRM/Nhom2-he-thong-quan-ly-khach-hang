@@ -3,81 +3,131 @@
 namespace App\Services;
 
 use App\Models\Campaign;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Pagination\LengthAwarePaginator;
 
+/**
+ * CampaignService
+ *
+ * Business logic cho chiến dịch marketing.
+ * Ném exception chuẩn để Handler::render() bắt và hiển thị trang lỗi dùng chung.
+ */
 class CampaignService
 {
     /**
-     * Get paginated or listed campaigns with optional search and status filtering.
-     *
-     * @param array $filters
-     * @param int $perPage
-     * @return LengthAwarePaginator
+     * Lấy danh sách chiến dịch có phân trang.
      */
-    public function getAllCampaigns(array $filters = [], int $perPage = 15): LengthAwarePaginator
+    public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator
     {
-        $query = Campaign::query();
+        $query = Campaign::query()->with(['creator', 'customer']);
 
-        if (!empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
-            });
+        if (! empty($filters['status'])) {
+            $query->where('status', $filters['status']);
         }
 
-        if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+        if (! empty($filters['created_by'])) {
+            $query->where('created_by', $filters['created_by']);
+        }
+
+        if (! empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
         }
 
         return $query->latest()->paginate($perPage);
     }
 
     /**
-     * Create a new campaign.
+     * Tìm chiến dịch theo ID.
      *
-     * @param array $data
-     * @return Campaign
+     * @throws ModelNotFoundException
      */
-    public function createCampaign(array $data): Campaign
-    {
-        return Campaign::create($data);
-    }
-
-    /**
-     * Find a campaign by ID.
-     *
-     * @param int $id
-     * @return Campaign
-     */
-    public function getCampaignById(int $id): Campaign
+    public function findOrFail(int $id): Campaign
     {
         return Campaign::findOrFail($id);
     }
 
     /**
-     * Update a campaign.
-     *
-     * @param Campaign|int $campaign
-     * @param array $data
-     * @return Campaign
+     * Tạo chiến dịch mới.
      */
-    public function updateCampaign(Campaign|int $campaign, array $data): Campaign
+    public function create(array $data, int $createdBy): Campaign
     {
-        $campaignModel = $campaign instanceof Campaign ? $campaign : Campaign::findOrFail($campaign);
-        $campaignModel->update($data);
-        return $campaignModel;
+        return Campaign::create(array_merge($data, ['created_by' => $createdBy]));
     }
 
     /**
-     * Delete a campaign.
+     * Cập nhật chiến dịch.
      *
-     * @param Campaign|int $campaign
-     * @return bool
+     * @throws ModelNotFoundException
+     * @throws AuthorizationException  Nếu không phải người tạo hoặc admin.
      */
-    public function deleteCampaign(Campaign|int $campaign): bool
+    public function update(int $id, array $data, int $actingUserId): Campaign
     {
-        $campaignModel = $campaign instanceof Campaign ? $campaign : Campaign::findOrFail($campaign);
-        return (bool) $campaignModel->delete();
+        $campaign = $this->findOrFail($id);
+
+        if (
+            $campaign->created_by !== $actingUserId
+            && ! $this->actingUserIsAdmin($actingUserId)
+        ) {
+            throw new AuthorizationException('Bạn không có quyền chỉnh sửa chiến dịch này.');
+        }
+
+        $campaign->update($data);
+
+        return $campaign->fresh();
+    }
+
+    /**
+     * Thay đổi trạng thái chiến dịch.
+     *
+     * @param  string $status  'draft' | 'active' | 'paused' | 'completed'
+     * @throws ModelNotFoundException
+     * @throws AuthorizationException
+     * @throws \InvalidArgumentException  Nếu trạng thái không hợp lệ.
+     */
+    public function changeStatus(int $id, string $status, int $actingUserId): Campaign
+    {
+        $allowed = ['draft', 'active', 'paused', 'completed'];
+
+        if (! in_array($status, $allowed, true)) {
+            throw new \InvalidArgumentException("Trạng thái [{$status}] không hợp lệ.");
+        }
+
+        return $this->update($id, ['status' => $status], $actingUserId);
+    }
+
+    /**
+     * Xoá mềm chiến dịch.
+     *
+     * @throws ModelNotFoundException
+     * @throws AuthorizationException
+     */
+    public function delete(int $id, int $actingUserId): void
+    {
+        $campaign = $this->findOrFail($id);
+
+        if (
+            $campaign->created_by !== $actingUserId
+            && ! $this->actingUserIsAdmin($actingUserId)
+        ) {
+            throw new AuthorizationException('Bạn không có quyền xóa chiến dịch này.');
+        }
+
+        $campaign->delete();
+    }
+
+    // -------------------------------------------------------------------------
+    // Private helpers
+    // -------------------------------------------------------------------------
+
+    private function actingUserIsAdmin(int $userId): bool
+    {
+        return \App\Models\User::where('id', $userId)
+                               ->where('role', 'admin')
+                               ->exists();
     }
 }

@@ -3,104 +3,86 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
-use Illuminate\Validation\ValidationException;
 
+/**
+ * AuthService
+ *
+ * Xử lý toàn bộ logic xác thực: đăng nhập, đăng xuất, lấy user hiện tại.
+ * Nếu xác thực thất bại, ném AuthenticationException -> Handler bắt -> 401.
+ */
 class AuthService
 {
     /**
-     * Authenticate user credentials.
+     * Đăng nhập user bằng email + password.
      *
-     * @param array $credentials
-     * @return array
-     * @throws ValidationException
+     * @param  array{email: string, password: string, remember?: bool} $credentials
+     * @return User
+     *
+     * @throws AuthenticationException  Nếu thông tin đăng nhập không hợp lệ.
      */
-    public function login(array $credentials): array
+    public function login(array $credentials): User
     {
-        if (!Auth::attempt($credentials)) {
-            throw ValidationException::withMessages([
-                'email' => [__('auth.failed')],
-            ]);
+        $remember = $credentials['remember'] ?? false;
+
+        if (! Auth::attempt([
+            'email'    => $credentials['email'],
+            'password' => $credentials['password'],
+            'is_active' => true,
+        ], $remember)) {
+            throw new AuthenticationException('Email hoặc mật khẩu không đúng.');
         }
 
+        /** @var User $user */
         $user = Auth::user();
 
-        return [
-            'user' => $user,
-            'message' => 'Đăng nhập thành công.',
-        ];
+        // Regenerate session để tránh session fixation
+        request()->session()->regenerate();
+
+        return $user;
     }
 
     /**
-     * Log the current user out.
-     *
-     * @return void
+     * Đăng xuất user hiện tại và xoá session.
      */
     public function logout(): void
     {
         Auth::logout();
+
+        request()->session()->invalidate();
+        request()->session()->regenerateToken();
     }
 
     /**
-     * Send password reset link email.
+     * Trả về user đang đăng nhập.
      *
-     * @param array $credentials
-     * @return string
-     * @throws ValidationException
+     * @throws AuthenticationException  Nếu chưa đăng nhập.
      */
-    public function sendResetLink(array $credentials): string
+    public function currentUser(): User
     {
-        $status = Password::sendResetLink($credentials);
+        /** @var User|null $user */
+        $user = Auth::user();
 
-        if ($status !== Password::RESET_LINK_SENT) {
-            throw ValidationException::withMessages([
-                'email' => [__($status)],
-            ]);
+        if (! $user) {
+            throw new AuthenticationException('Bạn chưa đăng nhập.');
         }
 
-        return __($status);
+        return $user;
     }
 
     /**
-     * Reset user password using token.
+     * Đổi mật khẩu cho user hiện tại.
      *
-     * @param array $credentials
-     * @return string
-     * @throws ValidationException
+     * @throws AuthenticationException  Nếu mật khẩu cũ không đúng.
      */
-    public function resetPassword(array $credentials): string
+    public function changePassword(User $user, string $currentPassword, string $newPassword): void
     {
-        $status = Password::reset($credentials, function (User $user, string $password) {
-            $user->forceFill([
-                'password' => Hash::make($password),
-            ])->save();
-        });
-
-        if ($status !== Password::PASSWORD_RESET) {
-            throw ValidationException::withMessages([
-                'email' => [__($status)],
-            ]);
+        if (! Hash::check($currentPassword, $user->password)) {
+            throw new AuthenticationException('Mật khẩu hiện tại không đúng.');
         }
 
-        return __($status);
+        $user->update(['password' => $newPassword]);
     }
-    public function createApiToken(User $user): string
-    {
-        $plainToken = bin2hex(random_bytes(32));
-        $user->apiTokens()->create([
-            'token_hash' => hash('sha256', $plainToken),
-            'expires_at' => now()->addHours(8),
-        ]);
-        return $plainToken;
-    }
-
-    public function revokeApiToken(?string $plainToken): void
-    {
-        if ($plainToken) {
-            \App\Models\ApiToken::where('token_hash', hash('sha256', $plainToken))->delete();
-        }
-    }
-
 }
