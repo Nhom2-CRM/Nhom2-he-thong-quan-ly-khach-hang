@@ -1,24 +1,37 @@
-export interface Role {
-  id: number;
-  name: string;
-  display_name: string;
-}
-
-export interface BusinessGroup {
-  id: number;
-  name: string;
-  parent_id?: number | null;
-}
-
-export interface UserSummary {
+export type User = {
   id: number;
   name: string;
   email: string;
-  roles: Role[];
-  business_groups: BusinessGroup[];
-}
+  role?: 'admin' | 'staff' | string;
+  locked_at: string | null;
+  customers_count?: number;
+  opportunities_count?: number;
+};
 
-export interface AssignmentOptions {
-  roles: Role[];
-  business_groups: BusinessGroup[];
-}
+export type Customer = {
+  id: number;
+  name: string;
+  email: string | null;
+  owner: User;
+};
+
+export type Opportunity = {
+  id: number;
+  title: string;
+  amount: string;
+  status: string;
+  owner: User;
+};
+
+export type HandoverLog = {
+  id: number;
+  source_user_id: number;
+  target_user_id: number;
+  performed_by_user_id: number;
+  entity_type: 'customer' | 'opportunity';
+  entity_id: number;
+  handed_over_at: string;
+  source_user: User;
+  target_user: User;
+  performed_by?: User;
+};
