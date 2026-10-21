@@ -9,6 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 class CheckDataScope
 {
 <<<<<<< HEAD
+<<<<<<< HEAD
     public function handle(Request $request, Closure $next, string $scopeRequired): Response
     {
         $user = $request->user();
@@ -33,3 +34,15 @@ class CheckDataScope
         return $next($request);
     }
 }
+=======
+    /**
+     * Handle an incoming request.
+     *
+     * @param  Closure(Request): (Response)  $next
+     */
+    public function handle(Request $request, Closure $next): Response
+    {
+        return $next($request);
+    }
+}
+>>>>>>> feature/S6-06-activity-backend

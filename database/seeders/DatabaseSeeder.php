@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 use App\Models\Opportunity;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -73,3 +74,26 @@ class DatabaseSeeder extends Seeder
         ]);
     }
 }
+=======
+use App\Models\User;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Database\Seeder;
+
+class DatabaseSeeder extends Seeder
+{
+    use WithoutModelEvents;
+
+    /**
+     * Seed the application's database.
+     */
+    public function run(): void
+    {
+        // User::factory(10)->create();
+
+        User::factory()->create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+        ]);
+    }
+}
+>>>>>>> feature/S6-06-activity-backend

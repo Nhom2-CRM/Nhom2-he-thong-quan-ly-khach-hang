@@ -3,6 +3,9 @@
 namespace App\Models;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> feature/S6-06-activity-backend
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -31,6 +34,7 @@ class User extends Authenticatable
         ];
     }
 }
+<<<<<<< HEAD
 =======
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -45,3 +49,5 @@ class User extends Authenticatable
     // ...
 }
 >>>>>>> 72f5237d663e404ee450fd532a2b229ee05201ee
+=======
+>>>>>>> feature/S6-06-activity-backend

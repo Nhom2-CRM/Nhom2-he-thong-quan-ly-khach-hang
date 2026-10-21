@@ -9,9 +9,13 @@
         "php": "^8.3",
         "laravel/framework": "^13.17",
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
         "laravel/sanctum": "^4.0",
 >>>>>>> 72f5237d663e404ee450fd532a2b229ee05201ee
+=======
+        "laravel/sanctum": "^4.0",
+>>>>>>> feature/S6-06-activity-backend
         "laravel/tinker": "^3.0"
     },
     "require-dev": {

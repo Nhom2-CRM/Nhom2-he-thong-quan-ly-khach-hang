@@ -5,10 +5,14 @@
         "This file is @generated automatically"
     ],
 <<<<<<< HEAD
+<<<<<<< HEAD
     "content-hash": "cda2add6397422fb1a2eb5b9207f1575",
 =======
     "content-hash": "3492741706fa63068ec0b91d799e9561",
 >>>>>>> 72f5237d663e404ee450fd532a2b229ee05201ee
+=======
+    "content-hash": "3492741706fa63068ec0b91d799e9561",
+>>>>>>> feature/S6-06-activity-backend
     "packages": [
         {
             "name": "brick/math",
@@ -1354,7 +1358,10 @@
         },
         {
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> feature/S6-06-activity-backend
             "name": "laravel/sanctum",
             "version": "v4.3.3",
             "source": {
@@ -1418,7 +1425,10 @@
             "time": "2026-06-23T18:26:55+00:00"
         },
         {
+<<<<<<< HEAD
 >>>>>>> 72f5237d663e404ee450fd532a2b229ee05201ee
+=======
+>>>>>>> feature/S6-06-activity-backend
             "name": "laravel/serializable-closure",
             "version": "v2.1.0",
             "source": {

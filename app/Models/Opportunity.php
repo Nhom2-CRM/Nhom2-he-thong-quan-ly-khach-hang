@@ -3,11 +3,15 @@
 namespace App\Models;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+=======
+>>>>>>> feature/S6-06-activity-backend
 use Illuminate\Database\Eloquent\Model;
 
 class Opportunity extends Model
 {
+<<<<<<< HEAD
     use HasFactory;
 
     protected $fillable = [
@@ -50,3 +54,7 @@ class Opportunity extends Model
     }
 >>>>>>> 72f5237d663e404ee450fd532a2b229ee05201ee
 }
+=======
+    //
+}
+>>>>>>> feature/S6-06-activity-backend

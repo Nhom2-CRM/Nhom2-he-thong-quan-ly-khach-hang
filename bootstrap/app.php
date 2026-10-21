@@ -4,14 +4,21 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 <<<<<<< HEAD
+<<<<<<< HEAD
 use Illuminate\Http\Request;
 =======
 >>>>>>> 72f5237d663e404ee450fd532a2b229ee05201ee
+=======
+use Illuminate\Http\Request;
+>>>>>>> feature/S6-06-activity-backend
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> feature/S6-06-activity-backend
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -23,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
     })->create();
+<<<<<<< HEAD
 =======
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
@@ -44,3 +52,5 @@ return Application::configure(basePath: dirname(__DIR__))
         });
     })->create();
 >>>>>>> 72f5237d663e404ee450fd532a2b229ee05201ee
+=======
+>>>>>>> feature/S6-06-activity-backend
